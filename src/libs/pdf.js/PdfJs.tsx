@@ -83,74 +83,10 @@ function usePdfDocument(src: string) {
 		error,
 		nextPage,
 		prevPage,
-		setCurrentPage,
 	};
 }
 
-// --- PdfViewer Component ---
-function PdfViewer({
-	pdfDoc,
-	currentPage,
-	status,
-	error,
-	nextPage,
-	prevPage,
-	canvasRef,
-}: {
-	pdfDoc: PDFDocumentProxy | undefined;
-	currentPage: number;
-	status: "idle" | "loading" | "success" | "error";
-	error: Error | null;
-	nextPage: () => void;
-	prevPage: () => void;
-	canvasRef: React.RefObject<HTMLCanvasElement>;
-}) {
-	if (status === "loading") {
-		return (
-			<ViewerContainer>
-				<StatusMessage>Loading PDF...</StatusMessage>
-			</ViewerContainer>
-		);
-	}
-	if (status === "error") {
-		return (
-			<ViewerContainer>
-				<StatusMessage>Error loading PDF: {error?.message}</StatusMessage>
-			</ViewerContainer>
-		);
-	}
-	return (
-		<ViewerContainer>
-			<CanvasWrapper $isVisible={status === "success"}>
-				<canvas ref={canvasRef} />
-			</CanvasWrapper>
-			<ControlsContainer>
-				<ControlButton
-					type="button"
-					onClick={prevPage}
-					disabled={currentPage <= 1 || status !== "success"}
-				>
-					Previous
-				</ControlButton>
-				<PageInfo>
-					Page {currentPage} of {pdfDoc?.numPages ?? "..."}
-				</PageInfo>
-				<ControlButton
-					type="button"
-					onClick={nextPage}
-					disabled={
-						!pdfDoc || currentPage >= pdfDoc.numPages || status !== "success"
-					}
-				>
-					Next
-				</ControlButton>
-			</ControlsContainer>
-		</ViewerContainer>
-	);
-}
-
 // --- Main Component ---
-// Now the component is much cleaner and only responsible for UI.
 export default function PdfJs(props: PdfProps) {
 	const { src } = props;
 	const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -161,7 +97,7 @@ export default function PdfJs(props: PdfProps) {
 	// Render a page
 	useEffect(() => {
 		const canvas = canvasRef.current;
-		if (!canvas || !pdfDoc) return;
+		if (!canvas || !pdfDoc || status !== "success") return;
 
 		// Cancel any previous render task to prevent race conditions
 		if (renderTaskRef.current) {
@@ -177,8 +113,14 @@ export default function PdfJs(props: PdfProps) {
 			canvas.height = viewport.height;
 			canvas.width = viewport.width;
 
+			const context = canvas.getContext("2d");
+			if (!context) {
+				console.error("Failed to get 2D context from canvas");
+				return;
+			}
+
 			const renderContext: RenderParameters = {
-				canvasContext: canvas.getContext("2d")!,
+				canvasContext: context,
 				viewport: viewport,
 			};
 
@@ -198,17 +140,41 @@ export default function PdfJs(props: PdfProps) {
 				renderTaskRef.current.cancel();
 			}
 		};
-	}, [pdfDoc, currentPage]);
+	}, [pdfDoc, currentPage, status]);
+
+	if (status === "loading") {
+		return <StatusMessage>Loading PDF...</StatusMessage>;
+	}
+
+	if (status === "error") {
+		return <StatusMessage>Error loading PDF: {error?.message}</StatusMessage>;
+	}
 
 	return (
-		<PdfViewer
-			pdfDoc={pdfDoc}
-			currentPage={currentPage}
-			status={status}
-			error={error}
-			nextPage={nextPage}
-			prevPage={prevPage}
-			canvasRef={canvasRef}
-		/>
+		<ViewerContainer>
+			<ControlsContainer>
+				<ControlButton
+					type="button"
+					onClick={prevPage}
+					disabled={currentPage <= 1}
+				>
+					Previous
+				</ControlButton>
+				<PageInfo>
+					Page {currentPage} of {pdfDoc?.numPages ?? "..."}
+				</PageInfo>
+				<ControlButton
+					type="button"
+					onClick={nextPage}
+					disabled={!pdfDoc || currentPage >= pdfDoc.numPages}
+				>
+					Next
+				</ControlButton>
+			</ControlsContainer>
+
+			<CanvasWrapper $isVisible={status === "success"}>
+				<canvas ref={canvasRef} />
+			</CanvasWrapper>
+		</ViewerContainer>
 	);
 }
