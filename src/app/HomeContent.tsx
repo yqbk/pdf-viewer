@@ -24,15 +24,26 @@ const Title = styled.h2`
 
 export default function HomeContent() {
   const [numPages, setNumPages] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadPdf = async () => {
-      if (getDocument) {
-        const loadingTask = getDocument("public/pan_tadeusz.pdf");
-        const pdf = await loadingTask.promise;
-        setNumPages(pdf.numPages);
+      try {
+        console.log('0. start', )
+        if (getDocument) {
+            
+            console.log('1. getDocument', )
+          const loadingTask = getDocument("/pan_tadeusz.pdf");
+          const pdf = await loadingTask.promise;
+          console.log('2. pdf', pdf)
+
+          setNumPages(pdf.numPages);
+        }
+      } catch (err: any) {
+        setError("Failed to load PDF: " + (err?.message || "Unknown error"));
       }
     };
+    
     loadPdf();
   }, []);
 
@@ -41,7 +52,10 @@ export default function HomeContent() {
       <Main>
         <p>main</p>
         <Title>PDF Example</Title>
-        {numPages !== null ? (
+
+        {error ? (
+          <p style={{ color: "red" }}>{error}</p>
+        ) : numPages !== null ? (
           <p>Number of pages: {numPages}</p>
         ) : (
           <p>Loading PDF...</p>
