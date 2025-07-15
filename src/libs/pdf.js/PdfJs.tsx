@@ -78,7 +78,8 @@ const TextSpan = styled.span<{ $isHighlighted: boolean; $isActive: boolean }>`
 	pointer-events: all; /* Allow mouse events on the spans */
 	cursor: pointer;
 	/* The text is made visible here for debugging alignment. Set to 'transparent' for final use. */
-	color: rgba(0, 0, 0, 0.4);
+	// color: rgba(0, 0, 0, 0.4);
+	color: transparent;
 	background-color: ${(props) => {
 		if (props.$isActive) return "rgba(255, 165, 0, 0.4)"; // Active color
 		if (props.$isHighlighted) return "rgba(255, 255, 0, 0.3)"; // Hover color
@@ -245,7 +246,9 @@ export default function PdfJs(props: PdfProps) {
 					const wordWidth = context.measureText(word).width;
 
 					// Create a new transform matrix for this word by adjusting the translation
+					// and setting the horizontal scale to the measured width of the word.
 					const wordTransform = [...itemTransform];
+					wordTransform[0] = wordWidth; // Set scaleX to the word's width
 					wordTransform[4] += accumulatedWidth; // Apply horizontal offset
 
 					const wordStyle: CSSProperties = {
