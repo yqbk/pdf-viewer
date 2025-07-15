@@ -5,53 +5,19 @@ import type {
 	RenderParameters,
 } from "pdfjs-dist/types/src/display/api";
 import { useEffect, useRef, useState } from "react";
-import styled from "styled-components";
+import {
+	CanvasWrapper,
+	ControlButton,
+	ControlsContainer,
+	PageInfo,
+	StatusMessage,
+	ViewerContainer,
+} from "./styles";
 import type { PdfProps } from "./types";
 
 // It's best practice to set the worker path once at the application's entry point,
 // but if this component is the only place it's used, setting it here is acceptable.
 PDFJS.GlobalWorkerOptions.workerSrc = "/pdf.worker.js";
-
-// --- Styled Components ---
-const ViewerContainer = styled.div`
-	font-family: sans-serif;
-`;
-
-const ControlsContainer = styled.div`
-	display: flex;
-	align-items: center;
-	gap: 1rem;
-	justify-content: space-between;
-	// margin: 1rem;
-`;
-
-const ControlButton = styled.button`
-	padding: 0.5rem 1rem;
-	border-radius: 4px;
-	border: 1px solid #ccc;
-	background-color: #f0f0f0;
-	cursor: pointer;
-
-	&:disabled {
-		cursor: not-allowed;
-		opacity: 0.5;
-	}
-`;
-
-const PageInfo = styled.span`
-	margin: 0 1rem;
-
-`;
-
-const StatusMessage = styled.div`
-	padding: 1rem;
-	text-align: center;
-`;
-
-const CanvasWrapper = styled.div<{ $isVisible: boolean }>`
-	border: 1px solid #ccc;
-	display: ${(props) => (props.$isVisible ? "block" : "none")};
-`;
 
 // --- Custom Hook for PDF Logic ---
 // This encapsulates all the complex logic related to loading and rendering the PDF.
@@ -121,6 +87,68 @@ function usePdfDocument(src: string) {
 	};
 }
 
+// --- PdfViewer Component ---
+function PdfViewer({
+	pdfDoc,
+	currentPage,
+	status,
+	error,
+	nextPage,
+	prevPage,
+	canvasRef,
+}: {
+	pdfDoc: PDFDocumentProxy | undefined;
+	currentPage: number;
+	status: "idle" | "loading" | "success" | "error";
+	error: Error | null;
+	nextPage: () => void;
+	prevPage: () => void;
+	canvasRef: React.RefObject<HTMLCanvasElement>;
+}) {
+	if (status === "loading") {
+		return (
+			<ViewerContainer>
+				<StatusMessage>Loading PDF...</StatusMessage>
+			</ViewerContainer>
+		);
+	}
+	if (status === "error") {
+		return (
+			<ViewerContainer>
+				<StatusMessage>Error loading PDF: {error?.message}</StatusMessage>
+			</ViewerContainer>
+		);
+	}
+	return (
+		<ViewerContainer>
+			<CanvasWrapper $isVisible={status === "success"}>
+				<canvas ref={canvasRef} />
+			</CanvasWrapper>
+			<ControlsContainer>
+				<ControlButton
+					type="button"
+					onClick={prevPage}
+					disabled={currentPage <= 1 || status !== "success"}
+				>
+					Previous
+				</ControlButton>
+				<PageInfo>
+					Page {currentPage} of {pdfDoc?.numPages ?? "..."}
+				</PageInfo>
+				<ControlButton
+					type="button"
+					onClick={nextPage}
+					disabled={
+						!pdfDoc || currentPage >= pdfDoc.numPages || status !== "success"
+					}
+				>
+					Next
+				</ControlButton>
+			</ControlsContainer>
+		</ViewerContainer>
+	);
+}
+
 // --- Main Component ---
 // Now the component is much cleaner and only responsible for UI.
 export default function PdfJs(props: PdfProps) {
@@ -173,39 +201,14 @@ export default function PdfJs(props: PdfProps) {
 	}, [pdfDoc, currentPage]);
 
 	return (
-		<ViewerContainer>
-			{status === "loading" && <StatusMessage>Loading PDF...</StatusMessage>}
-			{status === "error" && (
-				<StatusMessage>Error loading PDF: {error?.message}</StatusMessage>
-			)}
-
-			<CanvasWrapper $isVisible={status === "success"}>
-				<canvas ref={canvasRef} />
-			</CanvasWrapper>
-
-			<ControlsContainer>
-				<ControlButton
-					type="button"
-					onClick={prevPage}
-					disabled={currentPage <= 1 || status !== "success"}
-				>
-					Previous
-				</ControlButton>
-
-				<PageInfo>
-					Page {currentPage} of {pdfDoc?.numPages ?? "..."}
-				</PageInfo>
-
-				<ControlButton
-					type="button"
-					onClick={nextPage}
-					disabled={
-						!pdfDoc || currentPage >= pdfDoc.numPages || status !== "success"
-					}
-				>
-					Next
-				</ControlButton>
-			</ControlsContainer>
-		</ViewerContainer>
+		<PdfViewer
+			pdfDoc={pdfDoc}
+			currentPage={currentPage}
+			status={status}
+			error={error}
+			nextPage={nextPage}
+			prevPage={prevPage}
+			canvasRef={canvasRef}
+		/>
 	);
 }
