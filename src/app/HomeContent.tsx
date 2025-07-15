@@ -1,7 +1,11 @@
 "use client";
 
-import PdfJs from "../libs/pdf.js/PdfJs";
+import dynamic from "next/dynamic";
 import { Main, Page, Title } from "./styles";
+
+const PdfJs = dynamic(() => import("@/libs/pdf.js/PdfJs"), {
+	ssr: false,
+});
 
 export default function HomeContent() {
 	return (
