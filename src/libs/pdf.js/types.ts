@@ -1,3 +1,3 @@
 export interface PdfProps {
-  src: string;
+	src: string;
 }
