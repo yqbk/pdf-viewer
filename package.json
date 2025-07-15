@@ -17,11 +17,10 @@
     "styled-components": "^6.1.19"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3",
+    "@biomejs/biome": "^2.1.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "eslint": "^9",
     "eslint-config-next": "15.4.1",
     "typescript": "^5"
   }
