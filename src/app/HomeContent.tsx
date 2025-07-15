@@ -1,63 +1,16 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import styled from "styled-components";
-import { getDocument } from "./pdfjsConfig";
-import PdfJs from "./PdfJs";
-
-const Page = styled.div`
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-`;
-
-const Main = styled.main`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-`;
-
-const Title = styled.h2`
-  margin-top: 20px;
-`;
+import PdfJs from "../libs/pdf.js/PdfJs";
+import { Main, Page, Title } from "./styles";
 
 export default function HomeContent() {
-  const [numPages, setNumPages] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
+	return (
+		<Page>
+			<Main>
+				<Title>PDF Example</Title>
 
-  useEffect(() => {
-    const loadPdf = async () => {
-      try {
-        console.log('0. start', )
-        if (getDocument) {
-            
-            console.log('1. getDocument', )
-          const loadingTask = getDocument("/pan_tadeusz.pdf");
-          const pdf = await loadingTask.promise;
-          console.log('2. pdf', pdf)
-
-          setNumPages(pdf.numPages);
-        }
-      } catch (err: any) {
-        setError("Failed to load PDF: " + (err?.message || "Unknown error"));
-      }
-    };
-    
-    loadPdf();
-  }, []);
-
-  return (
-    <Page>
-      <Main>
-
-        <Title>PDF Example</Title>
-
-        <PdfJs src="/pan_tadeusz.pdf" />
-
-      
-      </Main>
-    </Page>
-  );
+				<PdfJs src="/pan_tadeusz.pdf" />
+			</Main>
+		</Page>
+	);
 }
