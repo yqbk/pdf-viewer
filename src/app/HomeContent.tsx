@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import { getDocument } from "./pdfjsConfig";
+import PdfJs from "./PdfJs";
 
 const Page = styled.div`
   min-height: 100vh;
@@ -50,16 +51,12 @@ export default function HomeContent() {
   return (
     <Page>
       <Main>
-        <p>main</p>
+
         <Title>PDF Example</Title>
 
-        {error ? (
-          <p style={{ color: "red" }}>{error}</p>
-        ) : numPages !== null ? (
-          <p>Number of pages: {numPages}</p>
-        ) : (
-          <p>Loading PDF...</p>
-        )}
+        <PdfJs src="/pan_tadeusz.pdf" />
+
+      
       </Main>
     </Page>
   );
