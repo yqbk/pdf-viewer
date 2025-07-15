@@ -225,19 +225,17 @@ export default function PdfJs(props: PdfProps) {
 
 					const tx = PDFJS.Util.transform(viewport.transform, item.transform);
 
-					// Calculate the font size from the vertical scale component of the transform matrix
 					const fontSize = Math.hypot(tx[2], tx[3]);
-					// Calculate the horizontal scale factor
 					const scaleX = tx[0] / fontSize;
 
 					const style: CSSProperties = {
 						left: `${tx[4]}px`,
-						top: `${tx[5]}px`,
+						top: `${tx[5] - fontSize}px`, // Adjusted top position
 						height: `${item.height}px`,
 						fontFamily: item.fontName,
 						fontSize: `${fontSize}px`,
 						transform: `scaleX(${scaleX})`,
-						transformOrigin: "left top",
+						transformOrigin: "left top", // Use 'left top' for more intuitive positioning
 					};
 					return { ...item, style };
 				})
