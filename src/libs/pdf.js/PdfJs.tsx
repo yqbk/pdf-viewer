@@ -163,10 +163,101 @@ function usePdfDocument(src: string) {
 	};
 }
 
+// --- PdfViewer Component ---
+function PdfViewer({
+	pdfDoc,
+	currentPage,
+	status,
+	error,
+	words,
+	hoveredWord,
+	activeWord,
+	nextPage,
+	prevPage,
+	canvasRef,
+	setHoveredWord,
+	setActiveWord,
+}: {
+	pdfDoc: PDFDocumentProxy | undefined;
+	currentPage: number;
+	status: "idle" | "loading" | "success" | "error";
+	error: Error | null;
+	words: ProcessedTextItem[];
+	hoveredWord: string | null;
+	activeWord: string | null;
+	nextPage: () => void;
+	prevPage: () => void;
+	canvasRef: React.RefObject<HTMLCanvasElement>;
+	setHoveredWord: React.Dispatch<React.SetStateAction<string | null>>;
+	setActiveWord: React.Dispatch<React.SetStateAction<string | null>>;
+}) {
+	if (status === "loading") {
+		return <StatusMessage>Loading PDF...</StatusMessage>;
+	}
+
+	if (status === "error") {
+		return <StatusMessage>Error loading PDF: {error?.message}</StatusMessage>;
+	}
+
+	return (
+		<ViewerContainer>
+			<ControlsContainer>
+				<ControlButton
+					type="button"
+					onClick={prevPage}
+					disabled={currentPage <= 1}
+				>
+					Previous
+				</ControlButton>
+				<PageInfo>
+					Page {currentPage} of {pdfDoc?.numPages ?? "..."}
+				</PageInfo>
+				<ControlButton
+					type="button"
+					onClick={nextPage}
+					disabled={!pdfDoc || currentPage >= pdfDoc.numPages}
+				>
+					Next
+				</ControlButton>
+			</ControlsContainer>
+
+			<PdfWrapper>
+				<CanvasWrapper $isVisible={status === "success"}>
+					<canvas ref={canvasRef} />
+				</CanvasWrapper>
+				<TextLayer>
+					{words.map((word, index) => {
+						const wordIdentifier = `${currentPage}-${index}`;
+						return (
+							<TextSpan
+								key={wordIdentifier}
+								style={word.style}
+								onMouseEnter={() => setHoveredWord(wordIdentifier)}
+								onMouseLeave={() => setHoveredWord(null)}
+								onClick={() =>
+									setActiveWord((prev) =>
+										prev === wordIdentifier ? null : wordIdentifier,
+									)
+								}
+								$isHighlighted={hoveredWord === wordIdentifier}
+								$isActive={activeWord === wordIdentifier}
+							>
+								{word.str}
+							</TextSpan>
+						);
+					})}
+				</TextLayer>
+			</PdfWrapper>
+		</ViewerContainer>
+	);
+}
+
 // --- Main Component ---
 export default function PdfJs(props: PdfProps) {
 	const { src } = props;
-	const canvasRef = useRef<HTMLCanvasElement>(null);
+	const canvasRef = useRef<HTMLCanvasElement>(
+		null,
+	) as React.RefObject<HTMLCanvasElement>;
 	const renderTaskRef = useRef<PDFJS.RenderTask | null>(null);
 	const [hoveredWord, setHoveredWord] = useState<string | null>(null);
 	const [activeWord, setActiveWord] = useState<string | null>(null);
@@ -285,65 +376,20 @@ export default function PdfJs(props: PdfProps) {
 		};
 	}, [pdfDoc, currentPage, status, setWords]);
 
-	const handleWordClick = (wordIdentifier: string) => {
-		setActiveWord((prevActiveWord) =>
-			prevActiveWord === wordIdentifier ? null : wordIdentifier,
-		);
-	};
-
-	if (status === "loading") {
-		return <StatusMessage>Loading PDF...</StatusMessage>;
-	}
-
-	if (status === "error") {
-		return <StatusMessage>Error loading PDF: {error?.message}</StatusMessage>;
-	}
-
 	return (
-		<ViewerContainer>
-			<ControlsContainer>
-				<ControlButton
-					type="button"
-					onClick={prevPage}
-					disabled={currentPage <= 1}
-				>
-					Previous
-				</ControlButton>
-				<PageInfo>
-					Page {currentPage} of {pdfDoc?.numPages ?? "..."}
-				</PageInfo>
-				<ControlButton
-					type="button"
-					onClick={nextPage}
-					disabled={!pdfDoc || currentPage >= pdfDoc.numPages}
-				>
-					Next
-				</ControlButton>
-			</ControlsContainer>
-
-			<PdfWrapper>
-				<CanvasWrapper $isVisible={status === "success"}>
-					<canvas ref={canvasRef} />
-				</CanvasWrapper>
-				<TextLayer>
-					{words.map((word, index) => {
-						const wordIdentifier = `${currentPage}-${index}`;
-						return (
-							<TextSpan
-								key={wordIdentifier}
-								style={word.style}
-								onMouseEnter={() => setHoveredWord(wordIdentifier)}
-								onMouseLeave={() => setHoveredWord(null)}
-								onClick={() => handleWordClick(wordIdentifier)}
-								$isHighlighted={hoveredWord === wordIdentifier}
-								$isActive={activeWord === wordIdentifier}
-							>
-								{word.str}
-							</TextSpan>
-						);
-					})}
-				</TextLayer>
-			</PdfWrapper>
-		</ViewerContainer>
+		<PdfViewer
+			pdfDoc={pdfDoc}
+			currentPage={currentPage}
+			status={status}
+			error={error}
+			words={words}
+			hoveredWord={hoveredWord}
+			activeWord={activeWord}
+			nextPage={nextPage}
+			prevPage={prevPage}
+			canvasRef={canvasRef}
+			setHoveredWord={setHoveredWord}
+			setActiveWord={setActiveWord}
+		/>
 	);
 }
