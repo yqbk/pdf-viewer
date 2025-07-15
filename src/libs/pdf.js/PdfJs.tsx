@@ -330,7 +330,7 @@ export default function PdfJs(props: PdfProps) {
 						const wordIdentifier = `${currentPage}-${index}`;
 						return (
 							<TextSpan
-								key={index}
+								key={wordIdentifier}
 								style={word.style}
 								onMouseEnter={() => setHoveredWord(wordIdentifier)}
 								onMouseLeave={() => setHoveredWord(null)}
