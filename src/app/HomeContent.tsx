@@ -7,13 +7,15 @@ const PdfJs = dynamic(() => import("@/libs/pdf.js/PdfJs"), {
 	ssr: false,
 });
 
+const FILE = "example";
+
 export default function HomeContent() {
 	return (
 		<Page>
 			<Main>
-				<Title>PDF Example</Title>
+				<Title>{FILE}</Title>
 
-				<PdfJs src="/pan_tadeusz.pdf" />
+				<PdfJs src={`/${FILE}.pdf`} />
 			</Main>
 		</Page>
 	);
