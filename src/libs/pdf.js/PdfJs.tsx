@@ -78,7 +78,6 @@ const TextSpan = styled.span<{ $isHighlighted: boolean; $isActive: boolean }>`
 	pointer-events: all; /* Allow mouse events on the spans */
 	cursor: pointer;
 	/* The text is made visible here for debugging alignment. Set to 'transparent' for final use. */
-	// color: rgba(0, 0, 0, 0.4);
 	color: transparent;
 	background-color: ${(props) => {
 		if (props.$isActive) return "rgba(255, 165, 0, 0.4)"; // Active color
@@ -101,7 +100,7 @@ function usePdfDocument(src: string) {
 		"idle" | "loading" | "success" | "error"
 	>("idle");
 	const [error, setError] = useState<Error | null>(null);
-	const [words, setWords] = useState<ProcessedTextItem[]>([]);
+	const [sentences, setSentences] = useState<ProcessedTextItem[][]>([]);
 
 	// Load the PDF document
 	useEffect(() => {
@@ -110,7 +109,7 @@ function usePdfDocument(src: string) {
 		setError(null);
 		setPdfDoc(undefined);
 		setCurrentPage(1);
-		setWords([]);
+		setSentences([]);
 
 		const loadingTask = PDFJS.getDocument(src);
 		loadingTask.promise
@@ -156,118 +155,27 @@ function usePdfDocument(src: string) {
 		currentPage,
 		status,
 		error,
-		words,
-		setWords,
+		sentences,
+		setSentences,
 		nextPage,
 		prevPage,
 	};
 }
 
-// --- PdfViewer Component ---
-function PdfViewer({
-	pdfDoc,
-	currentPage,
-	status,
-	error,
-	words,
-	hoveredWord,
-	activeWord,
-	nextPage,
-	prevPage,
-	canvasRef,
-	setHoveredWord,
-	setActiveWord,
-}: {
-	pdfDoc: PDFDocumentProxy | undefined;
-	currentPage: number;
-	status: "idle" | "loading" | "success" | "error";
-	error: Error | null;
-	words: ProcessedTextItem[];
-	hoveredWord: string | null;
-	activeWord: string | null;
-	nextPage: () => void;
-	prevPage: () => void;
-	canvasRef: React.RefObject<HTMLCanvasElement>;
-	setHoveredWord: React.Dispatch<React.SetStateAction<string | null>>;
-	setActiveWord: React.Dispatch<React.SetStateAction<string | null>>;
-}) {
-	if (status === "loading") {
-		return <StatusMessage>Loading PDF...</StatusMessage>;
-	}
-
-	if (status === "error") {
-		return <StatusMessage>Error loading PDF: {error?.message}</StatusMessage>;
-	}
-
-	return (
-		<ViewerContainer>
-			<ControlsContainer>
-				<ControlButton
-					type="button"
-					onClick={prevPage}
-					disabled={currentPage <= 1}
-				>
-					Previous
-				</ControlButton>
-				<PageInfo>
-					Page {currentPage} of {pdfDoc?.numPages ?? "..."}
-				</PageInfo>
-				<ControlButton
-					type="button"
-					onClick={nextPage}
-					disabled={!pdfDoc || currentPage >= pdfDoc.numPages}
-				>
-					Next
-				</ControlButton>
-			</ControlsContainer>
-
-			<PdfWrapper>
-				<CanvasWrapper $isVisible={status === "success"}>
-					<canvas ref={canvasRef} />
-				</CanvasWrapper>
-				<TextLayer>
-					{words.map((word, index) => {
-						const wordIdentifier = `${currentPage}-${index}`;
-						return (
-							<TextSpan
-								key={wordIdentifier}
-								style={word.style}
-								onMouseEnter={() => setHoveredWord(wordIdentifier)}
-								onMouseLeave={() => setHoveredWord(null)}
-								onClick={() =>
-									setActiveWord((prev) =>
-										prev === wordIdentifier ? null : wordIdentifier,
-									)
-								}
-								$isHighlighted={hoveredWord === wordIdentifier}
-								$isActive={activeWord === wordIdentifier}
-							>
-								{word.str}
-							</TextSpan>
-						);
-					})}
-				</TextLayer>
-			</PdfWrapper>
-		</ViewerContainer>
-	);
-}
-
 // --- Main Component ---
 export default function PdfJs(props: PdfProps) {
 	const { src } = props;
-	const canvasRef = useRef<HTMLCanvasElement>(
-		null,
-	) as React.RefObject<HTMLCanvasElement>;
+	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const renderTaskRef = useRef<PDFJS.RenderTask | null>(null);
-	const [hoveredWord, setHoveredWord] = useState<string | null>(null);
-	const [activeWord, setActiveWord] = useState<string | null>(null);
+	const [hoveredSentence, setHoveredSentence] = useState<number | null>(null);
+	const [activeSentence, setActiveSentence] = useState<number | null>(null);
 	const {
 		pdfDoc,
 		currentPage,
 		status,
 		error,
-		words,
-		setWords,
+		sentences,
+		setSentences,
 		nextPage,
 		prevPage,
 	} = usePdfDocument(src);
@@ -311,7 +219,7 @@ export default function PdfJs(props: PdfProps) {
 
 			// Get text content to build the highlight layer
 			const textContent = await page.getTextContent();
-			const processedWords: ProcessedTextItem[] = [];
+			const allWords: ProcessedTextItem[] = [];
 
 			textContent.items.forEach((item) => {
 				if (!("str" in item) || !item.str.trim()) return;
@@ -323,7 +231,9 @@ export default function PdfJs(props: PdfProps) {
 					item.transform,
 				);
 
-				context.font = `${Math.hypot(itemTransform[2], itemTransform[3])}px ${style.fontFamily}`;
+				context.font = `${Math.hypot(itemTransform[2], itemTransform[3])}px ${
+					style.fontFamily
+				}`;
 
 				let accumulatedWidth = 0;
 
@@ -336,11 +246,9 @@ export default function PdfJs(props: PdfProps) {
 
 					const wordWidth = context.measureText(word).width;
 
-					// Create a new transform matrix for this word by adjusting the translation
-					// and setting the horizontal scale to the measured width of the word.
 					const wordTransform = [...itemTransform];
-					wordTransform[0] = wordWidth; // Set scaleX to the word's width
-					wordTransform[4] += accumulatedWidth; // Apply horizontal offset
+					wordTransform[0] = wordWidth;
+					wordTransform[4] += accumulatedWidth;
 
 					const wordStyle: CSSProperties = {
 						left: 0,
@@ -353,7 +261,7 @@ export default function PdfJs(props: PdfProps) {
 						transformOrigin: "0% 0%",
 					};
 
-					processedWords.push({
+					allWords.push({
 						...item,
 						str: word,
 						width: wordWidth,
@@ -364,7 +272,21 @@ export default function PdfJs(props: PdfProps) {
 				});
 			});
 
-			setWords(processedWords);
+			// Group words into sentences
+			const groupedSentences: ProcessedTextItem[][] = [];
+			let currentSentence: ProcessedTextItem[] = [];
+			allWords.forEach((word) => {
+				currentSentence.push(word);
+				if (/[.?!]/.test(word.str)) {
+					groupedSentences.push(currentSentence);
+					currentSentence = [];
+				}
+			});
+			if (currentSentence.length > 0) {
+				groupedSentences.push(currentSentence);
+			}
+
+			setSentences(groupedSentences);
 		});
 
 		// Cleanup function to run when currentPage or pdfDoc changes
@@ -374,22 +296,66 @@ export default function PdfJs(props: PdfProps) {
 				renderTaskRef.current.cancel();
 			}
 		};
-	}, [pdfDoc, currentPage, status, setWords]);
+	}, [pdfDoc, currentPage, status, setSentences]);
+
+	const handleSentenceClick = (sentenceIndex: number) => {
+		setActiveSentence((prev) =>
+			prev === sentenceIndex ? null : sentenceIndex,
+		);
+	};
+
+	if (status === "loading") {
+		return <StatusMessage>Loading PDF...</StatusMessage>;
+	}
+
+	if (status === "error") {
+		return <StatusMessage>Error loading PDF: {error?.message}</StatusMessage>;
+	}
 
 	return (
-		<PdfViewer
-			pdfDoc={pdfDoc}
-			currentPage={currentPage}
-			status={status}
-			error={error}
-			words={words}
-			hoveredWord={hoveredWord}
-			activeWord={activeWord}
-			nextPage={nextPage}
-			prevPage={prevPage}
-			canvasRef={canvasRef}
-			setHoveredWord={setHoveredWord}
-			setActiveWord={setActiveWord}
-		/>
+		<ViewerContainer>
+			<ControlsContainer>
+				<ControlButton
+					type="button"
+					onClick={prevPage}
+					disabled={currentPage <= 1}
+				>
+					Previous
+				</ControlButton>
+				<PageInfo>
+					Page {currentPage} of {pdfDoc?.numPages ?? "..."}
+				</PageInfo>
+				<ControlButton
+					type="button"
+					onClick={nextPage}
+					disabled={!pdfDoc || currentPage >= pdfDoc.numPages}
+				>
+					Next
+				</ControlButton>
+			</ControlsContainer>
+
+			<PdfWrapper>
+				<CanvasWrapper $isVisible={status === "success"}>
+					<canvas ref={canvasRef} />
+				</CanvasWrapper>
+				<TextLayer>
+					{sentences.map((sentence, sentenceIndex) =>
+						sentence.map((word, wordIndex) => (
+							<TextSpan
+								key={`${sentenceIndex}-${wordIndex}`}
+								style={word.style}
+								onMouseEnter={() => setHoveredSentence(sentenceIndex)}
+								onMouseLeave={() => setHoveredSentence(null)}
+								onClick={() => handleSentenceClick(sentenceIndex)}
+								$isHighlighted={hoveredSentence === sentenceIndex}
+								$isActive={activeSentence === sentenceIndex}
+							>
+								{word.str}
+							</TextSpan>
+						)),
+					)}
+				</TextLayer>
+			</PdfWrapper>
+		</ViewerContainer>
 	);
 }
