@@ -100,7 +100,7 @@ function usePdfDocument(src: string) {
 		"idle" | "loading" | "success" | "error"
 	>("idle");
 	const [error, setError] = useState<Error | null>(null);
-	const [textItems, setTextItems] = useState<ProcessedTextItem[]>([]);
+	const [words, setWords] = useState<ProcessedTextItem[]>([]);
 
 	// Load the PDF document
 	useEffect(() => {
@@ -109,7 +109,7 @@ function usePdfDocument(src: string) {
 		setError(null);
 		setPdfDoc(undefined);
 		setCurrentPage(1);
-		setTextItems([]);
+		setWords([]);
 
 		const loadingTask = PDFJS.getDocument(src);
 		loadingTask.promise
@@ -155,8 +155,8 @@ function usePdfDocument(src: string) {
 		currentPage,
 		status,
 		error,
-		textItems,
-		setTextItems,
+		words,
+		setWords,
 		nextPage,
 		prevPage,
 	};
@@ -174,8 +174,8 @@ export default function PdfJs(props: PdfProps) {
 		currentPage,
 		status,
 		error,
-		textItems,
-		setTextItems,
+		words,
+		setWords,
 		nextPage,
 		prevPage,
 	} = usePdfDocument(src);
@@ -219,29 +219,58 @@ export default function PdfJs(props: PdfProps) {
 
 			// Get text content to build the highlight layer
 			const textContent = await page.getTextContent();
-			const processedItems: ProcessedTextItem[] = textContent.items
-				.map((item) => {
-					if (!("str" in item)) return null;
+			const processedWords: ProcessedTextItem[] = [];
 
-					const tx = PDFJS.Util.transform(viewport.transform, item.transform);
+			textContent.items.forEach((item) => {
+				if (!("str" in item) || !item.str.trim()) return;
 
-					const fontSize = Math.hypot(tx[2], tx[3]);
-					const scaleX = tx[0] / fontSize;
+				const itemWords = item.str.split(/(\s+)/); // Split by space, keeping spaces
+				const style = textContent.styles[item.fontName];
+				const itemTransform = PDFJS.Util.transform(
+					viewport.transform,
+					item.transform,
+				);
 
-					const style: CSSProperties = {
-						left: `${tx[4]}px`,
-						top: `${tx[5] - fontSize}px`, // Adjusted top position
-						height: `${item.height}px`,
-						fontFamily: item.fontName,
-						fontSize: `${fontSize}px`,
-						transform: `scaleX(${scaleX})`,
-						transformOrigin: "left top", // Use 'left top' for more intuitive positioning
+				context.font = `${Math.hypot(itemTransform[2], itemTransform[3])}px ${style.fontFamily}`;
+
+				let accumulatedWidth = 0;
+
+				itemWords.forEach((word) => {
+					if (!word.trim()) {
+						// It's whitespace, just accumulate width
+						accumulatedWidth += context.measureText(word).width;
+						return;
+					}
+
+					const wordWidth = context.measureText(word).width;
+
+					// Create a new transform matrix for this word by adjusting the translation
+					const wordTransform = [...itemTransform];
+					wordTransform[4] += accumulatedWidth; // Apply horizontal offset
+
+					const wordStyle: CSSProperties = {
+						left: 0,
+						top: 0,
+						height: "1px",
+						width: "1px",
+						fontFamily: style.fontFamily,
+						fontSize: "1px",
+						transform: `matrix(${wordTransform.join(", ")})`,
+						transformOrigin: "0% 0%",
 					};
-					return { ...item, style };
-				})
-				.filter((item): item is ProcessedTextItem => item !== null);
 
-			setTextItems(processedItems);
+					processedWords.push({
+						...item,
+						str: word,
+						width: wordWidth,
+						style: wordStyle,
+					});
+
+					accumulatedWidth += wordWidth;
+				});
+			});
+
+			setWords(processedWords);
 		});
 
 		// Cleanup function to run when currentPage or pdfDoc changes
@@ -251,7 +280,7 @@ export default function PdfJs(props: PdfProps) {
 				renderTaskRef.current.cancel();
 			}
 		};
-	}, [pdfDoc, currentPage, status, setTextItems]);
+	}, [pdfDoc, currentPage, status, setWords]);
 
 	const handleWordClick = (wordIdentifier: string) => {
 		setActiveWord((prevActiveWord) =>
@@ -294,19 +323,19 @@ export default function PdfJs(props: PdfProps) {
 					<canvas ref={canvasRef} />
 				</CanvasWrapper>
 				<TextLayer>
-					{textItems.map((item, index) => {
+					{words.map((word, index) => {
 						const wordIdentifier = `${currentPage}-${index}`;
 						return (
 							<TextSpan
 								key={index}
-								style={item.style}
+								style={word.style}
 								onMouseEnter={() => setHoveredWord(wordIdentifier)}
 								onMouseLeave={() => setHoveredWord(null)}
 								onClick={() => handleWordClick(wordIdentifier)}
 								$isHighlighted={hoveredWord === wordIdentifier}
 								$isActive={activeWord === wordIdentifier}
 							>
-								{item.str}
+								{word.str}
 							</TextSpan>
 						);
 					})}
