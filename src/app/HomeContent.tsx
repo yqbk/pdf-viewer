@@ -4,19 +4,19 @@ import dynamic from "next/dynamic";
 import { Main, Page, Title } from "./styles";
 
 const PdfJs = dynamic(() => import("@/libs/pdf.js/PdfJs"), {
-	ssr: false,
+  ssr: false,
 });
 
 const FILE = "example";
 
 export default function HomeContent() {
-	return (
-		<Page>
-			<Main>
-				<Title>{FILE}</Title>
+  return (
+    <Page>
+      <Main>
+        <Title>{FILE}</Title>
 
-				<PdfJs src={`/${FILE}.pdf`} />
-			</Main>
-		</Page>
-	);
+        <PdfJs src={`/${FILE}.pdf`} />
+      </Main>
+    </Page>
+  );
 }

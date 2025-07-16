@@ -59,8 +59,8 @@ export const TextLayer = styled.div`
 `;
 
 export const TextSpan = styled.span<{
-	$isHighlighted: boolean;
-	$isActive: boolean;
+  $isHighlighted: boolean;
+  $isActive: boolean;
 }>`
     position: absolute;
     white-space: pre;
@@ -69,8 +69,8 @@ export const TextSpan = styled.span<{
     /* The text is made visible here for debugging alignment. Set to 'transparent' for final use. */
     color: transparent;
     background-color: ${(props) => {
-			if (props.$isActive) return "rgba(255, 165, 0, 0.4)"; // Active color
-			if (props.$isHighlighted) return "rgba(255, 255, 0, 0.3)"; // Hover color
-			return "transparent";
-		}};
+      if (props.$isActive) return "rgba(255, 165, 0, 0.4)"; // Active color
+      if (props.$isHighlighted) return "rgba(255, 255, 0, 0.3)"; // Hover color
+      return "transparent";
+    }};
 `;
