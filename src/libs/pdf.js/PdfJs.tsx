@@ -7,7 +7,6 @@ import type {
 } from "pdfjs-dist/types/src/display/api";
 import { type CSSProperties, useEffect, useRef, useState } from "react";
 import styled from "styled-components";
-import type { PdfProps } from "./types";
 
 // It's best practice to set the worker path once at the application's entry point,
 // but if this component is the only place it's used, setting it here is acceptable.
@@ -89,6 +88,10 @@ const TextSpan = styled.span<{ $isHighlighted: boolean; $isActive: boolean }>`
 // --- Types ---
 interface ProcessedTextItem extends TextItem {
 	style: CSSProperties;
+}
+
+export interface PdfProps {
+	src: string;
 }
 
 // --- Custom Hook for PDF Logic ---

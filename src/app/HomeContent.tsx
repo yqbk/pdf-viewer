@@ -7,7 +7,7 @@ const PdfJs = dynamic(() => import("@/libs/pdf.js/PdfJs"), {
 	ssr: false,
 });
 
-const FILE = "example_2";
+const FILE = "example";
 
 export default function HomeContent() {
 	return (
