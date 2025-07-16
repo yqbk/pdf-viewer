@@ -49,12 +49,6 @@ export const usePdfDocument = (src: string) => {
         );
         setStatus(PDF_STATUS.error);
       });
-
-    return () => {
-      if (!loadingTask.destroyed) {
-        loadingTask.destroy();
-      }
-    };
   }, [src]);
 
   const goToNextPage = () => {

@@ -47,9 +47,11 @@ const PdfJs = ({ src }: PdfProps) => {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !pdfDoc || status !== PDF_STATUS.success) return;
+
     if (renderTaskRef.current) {
       renderTaskRef.current.cancel();
     }
+
     let isCancelled = false;
     pdfDoc.getPage(currentPage).then(async (page: PDFPageProxy) => {
       if (isCancelled) return;
